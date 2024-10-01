@@ -1,0 +1,31 @@
+import Bull from 'bull';
+import { filesDb } from './utils/database.js';
+import imageThumbnail from 'image-thumbnail';
+import fs from 'fs';
+
+const fileQueue = new Bull('fileQueue');
+
+fileQueue.process(async (job) => {
+  const { userId, fileId } = job.data;
+
+  if (!fileId) throw new Error('Missing fileId');
+  if (!userId) throw new Error('Missing userId');
+
+  const file = filesDb.find(file => file.id === fileId && file.userId === userId);
+  if (!file) throw new Error('File not found');
+
+  const sizes = [100, 250, 500];
+
+  try {
+    for (const size of sizes) {
+      const options = { width: size };
+      const thumbnail = await imageThumbnail(file.localPath, options);
+      const thumbnailPath = `${file.localPath}_${size}`;
+      fs.writeFileSync(thumbnailPath, thumbnail);
+    }
+  } catch (error) {
+    console.error('Error generating thumbnails:', error);
+  }
+});
+
+export default fileQueue;

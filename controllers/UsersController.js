@@ -1,41 +1,31 @@
-import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db.js';
-import sha1 from 'sha1';
+import redisClient from '../utils/redis.js';
 
-export const postNew = async (req, res) => {
-  const { email, password } = req.body;
+// Get user information based on token
+export const getMe = async (req, res) => {
+  const token = req.headers['x-token'];
 
-  // Check if email is provided
-  if (!email) {
-    return res.status(400).json({ error: 'Missing email' });
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Check if password is provided
-  if (!password) {
-    return res.status(400).json({ error: 'Missing password' });
+  // Get the user ID from Redis using the token
+  const userId = await redisClient.get(`auth_${token}`);
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
-    // Check if the user already exists
-    const userExists = await dbClient.db.collection('users').findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ error: 'Already exist' });
+    // Find the user by ID in the database
+    const user = await dbClient.db.collection('users').findOne({ _id: dbClient.ObjectId(userId) });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Hash the password with SHA1
-    const hashedPassword = sha1(password);
-
-    // Create a new user object
-    const newUser = {
-      email,
-      password: hashedPassword,
-    };
-
-    // Insert the user into the database
-    const result = await dbClient.db.collection('users').insertOne(newUser);
-
-    // Return the new user with id and email only
-    return res.status(201).json({ id: result.insertedId, email });
+    // Return the user's email and ID
+    return res.status(200).json({ id: user._id, email: user.email });
   } catch (err) {
     return res.status(500).json({ error: 'Internal server error' });
   }
