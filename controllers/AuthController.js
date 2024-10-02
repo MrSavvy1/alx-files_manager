@@ -22,7 +22,7 @@ class AuthController {
     }
 
     const token = uuidv4();
-    await redisClient.set(`auth_${token}`, user._id.toString(), 86400);
+    await redisClient.set(`auth_${token}`, user._id.toString(), 60 * 60 ^ 24);
 
     res.status(200).json({ token });
   }
@@ -38,6 +38,7 @@ class AuthController {
     await redisClient.del(`auth_${token}`);
     return res.status(204).send();
   }
+
 }
 
 module.exports = AuthController;
