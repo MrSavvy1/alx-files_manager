@@ -1,5 +1,7 @@
 import { MongoClient } from 'mongodb';
 
+import Collection from 'mongodb/lib/collection';
+
 class DBClient {
   constructor() {
     const host = process.env.DB_HOST || 'localhost';
